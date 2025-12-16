@@ -9,6 +9,7 @@ import 'package:logging/logging.dart';
 import 'android_environment.dart';
 import 'build_cmake.dart';
 import 'build_gradle.dart';
+import 'build_hvigor.dart';
 import 'build_pod.dart';
 import 'logging.dart';
 import 'options.dart';
@@ -77,6 +78,20 @@ class BuildCMakeCommand extends BuildCommand {
   }
 }
 
+class BuildHvigorCommand extends BuildCommand {
+  @override
+  final name = 'build-hvigor';
+
+  @override
+  final description = 'Build openharmony library';
+
+  @override
+  Future<void> runBuildCommand(CargokitUserOptions options) async {
+    final build = BuildHvigor(userOptions: options);
+    await build.build();
+  }
+}
+
 class GenKeyCommand extends Command {
   @override
   final name = 'gen-key';
@@ -126,6 +141,10 @@ class PrecompileBinariesCommand extends Command {
       ..addOption(
         'temp-dir',
         help: 'Directory to store temporary build artifacts',
+      )
+      ..addOption(
+        'glibc-version',
+        help: 'GLIBC version to use for linux builds',
       )
       ..addFlag(
         "verbose",
@@ -195,6 +214,7 @@ class PrecompileBinariesCommand extends Command {
       androidNdkVersion: argResults!['android-ndk-version'] as String?,
       androidMinSdkVersion: androidMinSdkVersion,
       tempDir: argResults!['temp-dir'] as String?,
+      glibcVersion: argResults!['glibc-version'] as String?,
     );
 
     await precompileBinaries.run();
@@ -241,6 +261,7 @@ Future<void> runMain(List<String> args) async {
       ..addCommand(BuildPodCommand())
       ..addCommand(BuildGradleCommand())
       ..addCommand(BuildCMakeCommand())
+      ..addCommand(BuildHvigorCommand())
       ..addCommand(GenKeyCommand())
       ..addCommand(PrecompileBinariesCommand())
       ..addCommand(VerifyBinariesCommand());

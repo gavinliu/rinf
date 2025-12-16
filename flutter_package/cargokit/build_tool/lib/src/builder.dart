@@ -5,6 +5,7 @@ import 'package:path/path.dart' as path;
 import 'android_environment.dart';
 import 'cargo.dart';
 import 'environment.dart';
+import 'ohos_environment.dart';
 import 'options.dart';
 import 'rustup.dart';
 import 'target.dart';
@@ -51,6 +52,10 @@ class BuildEnvironment {
   final int? androidMinSdkVersion;
   final String? javaHome;
 
+  final String? glibcVersion;
+
+  final String? ohosSDKHome;
+
   BuildEnvironment({
     required this.configuration,
     required this.crateOptions,
@@ -62,6 +67,8 @@ class BuildEnvironment {
     this.androidNdkVersion,
     this.androidMinSdkVersion,
     this.javaHome,
+    this.glibcVersion,
+    this.ohosSDKHome,
   });
 
   static BuildConfiguration parseBuildConfiguration(String value) {
@@ -79,6 +86,7 @@ class BuildEnvironment {
 
   static BuildEnvironment fromEnvironment({
     required bool isAndroid,
+    String? ohosSDKHome,
   }) {
     final buildConfiguration =
         parseBuildConfiguration(Environment.configuration);
@@ -99,6 +107,7 @@ class BuildEnvironment {
       androidMinSdkVersion:
           isAndroid ? int.parse(Environment.minSdkVersion) : null,
       javaHome: isAndroid ? Environment.javaHome : null,
+      ohosSDKHome: ohosSDKHome,
     );
   }
 }
@@ -125,6 +134,9 @@ class RustBuilder {
     if (!rustup.installedTargets(toolchain)!.contains(target.rust)) {
       rustup.installTarget(target.rust, toolchain: toolchain);
     }
+    if (environment.glibcVersion != null) {
+      rustup.installZigBuild(toolchain);
+    }
   }
 
   CargoBuildOptions? get _buildOptions =>
@@ -142,7 +154,9 @@ class RustBuilder {
         'run',
         _toolchain,
         'cargo',
-        'build',
+        (target.android == null && environment.glibcVersion != null)
+            ? 'zigbuild'
+            : 'build',
         ...extraArgs,
         '--manifest-path',
         manifestPath,
@@ -150,7 +164,10 @@ class RustBuilder {
         environment.crateInfo.packageName,
         if (!environment.configuration.isDebug) '--release',
         '--target',
-        target.rust,
+        target.rust +
+            ((target.android == null && environment.glibcVersion != null)
+                ? '.${environment.glibcVersion!}'
+                : ""),
         '--target-dir',
         environment.targetTempDir,
       ],
@@ -164,9 +181,7 @@ class RustBuilder {
   }
 
   Future<Map<String, String>> _buildEnvironment() async {
-    if (target.android == null) {
-      return {};
-    } else {
+    if (target.android != null) {
       final sdkPath = environment.androidSdkPath;
       final ndkVersion = environment.androidNdkVersion;
       final minSdkVersion = environment.androidMinSdkVersion;
@@ -190,6 +205,14 @@ class RustBuilder {
         env.installNdk(javaHome: environment.javaHome!);
       }
       return env.buildEnvironment();
+    } else if (target.ohos != null) {
+      final env = OhosEnvironment(
+          targetTempDir: environment.targetTempDir,
+          ohosSDKHome: environment.ohosSDKHome ?? "",
+          target: target);
+      return env.buildEnvironment();
+    } else {
+      return {};
     }
   }
 }
