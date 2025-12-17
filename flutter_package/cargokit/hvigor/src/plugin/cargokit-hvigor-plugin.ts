@@ -72,6 +72,15 @@ function registerCargokitTask(
 
       const rootNodeDirPath = node.getParentNode()?.nodeDir.filePath;
 
+      if (!rootNodeDirPath) {
+        throw new Error("rootNodeDirPath is required");
+      }
+
+      const cargokitManifestPath = resolve(
+        rootNodeDirPath,
+        cargokit_mainifest_dir
+      );
+
       const result = spawnSync(executablePath, ["build-hvigor"], {
         stdio: "inherit",
         env: {
@@ -79,7 +88,7 @@ function registerCargokitTask(
           CARGOKIT_ROOT_PROJECT_DIR: rootNodeDirPath,
           CARGOKIT_TOOL_TEMP_DIR: `${buildDir}/build_tool`,
           CARGOKIT_TARGET_PLATFORMS: PLATFORMS.join(","),
-          CARGOKIT_MANIFEST_DIR: cargokit_mainifest_dir,
+          CARGOKIT_MANIFEST_DIR: cargokitManifestPath,
           CARGOKIT_CONFIGURATION: "release",
           CARGOKIT_TARGET_TEMP_DIR: `${buildDir}/cargokit`,
           CARGOKIT_OUTPUT_DIR: outputDir,
